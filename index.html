@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="一个浏览器端线性回归在线分析工具，支持 CSV 粘贴、列选择、散点图、拟合线和关键统计指标。">
+    <title>线性回归在线分析器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="nav">
+            <a class="brand" href="#top" aria-label="线性回归在线分析器首页">
+                <span class="brand-mark">LR</span>
+                <span>线性回归在线分析器</span>
+            </a>
+            <div class="nav-links">
+                <a href="#data">数据</a>
+                <a href="#analysis">分析</a>
+                <a href="#guide">说明</a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="top">
+        <section class="hero">
+            <div class="hero-content">
+                <p class="eyebrow">Browser-only · No upload · Instant regression</p>
+                <h1>把 CSV 数据粘进来，立即完成线性回归分析</h1>
+                <p class="hero-copy">选择自变量 X 与因变量 Y，自动计算回归方程、R²、相关系数、残差指标，并绘制交互式散点图与拟合线。所有计算都在你的浏览器本地完成。</p>
+                <div class="hero-actions">
+                    <a class="button primary" href="#data">开始分析</a>
+                    <button class="button ghost" id="loadSampleBtn" type="button">载入示例数据</button>
+                </div>
+            </div>
+            <div class="hero-card" aria-label="分析指标预览">
+                <div class="mini-chart">
+                    <svg viewBox="0 0 360 220" role="img" aria-label="散点图和拟合线示意">
+                        <defs>
+                            <linearGradient id="lineGradient" x1="0" x2="1" y1="0" y2="0">
+                                <stop offset="0%" stop-color="#4f46e5"/>
+                                <stop offset="100%" stop-color="#06b6d4"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="0" y="0" width="360" height="220" rx="24" fill="#0f172a"/>
+                        <g opacity="0.22" stroke="#94a3b8" stroke-width="1">
+                            <line x1="42" y1="24" x2="42" y2="188"/>
+                            <line x1="42" y1="188" x2="326" y2="188"/>
+                            <line x1="42" y1="148" x2="326" y2="148"/>
+                            <line x1="42" y1="108" x2="326" y2="108"/>
+                            <line x1="42" y1="68" x2="326" y2="68"/>
+                        </g>
+                        <line x1="58" y1="166" x2="312" y2="52" stroke="url(#lineGradient)" stroke-width="5" stroke-linecap="round"/>
+                        <g fill="#67e8f9">
+                            <circle cx="70" cy="158" r="6"/><circle cx="104" cy="146" r="6"/><circle cx="132" cy="127" r="6"/>
+                            <circle cx="166" cy="119" r="6"/><circle cx="198" cy="96" r="6"/><circle cx="238" cy="86" r="6"/>
+                            <circle cx="276" cy="69" r="6"/><circle cx="306" cy="55" r="6"/>
+                        </g>
+                    </svg>
+                </div>
+                <div class="hero-stats">
+                    <div><span>ŷ =</span> 2.14x + 8.37</div>
+                    <div><span>R²</span> 0.948</div>
+                    <div><span>RMSE</span> 3.21</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="data" class="panel data-panel">
+            <div class="section-title">
+                <p class="eyebrow">Step 1</p>
+                <h2>输入数据</h2>
+                <p>粘贴 CSV，首行作为列名。至少需要两列数值数据。</p>
+            </div>
+            <div class="data-layout">
+                <div class="input-card">
+                    <label for="csvInput">CSV 数据</label>
+                    <textarea id="csvInput" spellcheck="false" placeholder="例如：&#10;广告投入,销售额&#10;10,32&#10;15,41&#10;20,48"></textarea>
+                    <div class="input-actions">
+                        <label class="file-button">
+                            上传 CSV
+                            <input id="fileInput" type="file" accept=".csv,text/csv">
+                        </label>
+                        <button class="button secondary" id="parseBtn" type="button">解析数据</button>
+                        <button class="button text" id="clearBtn" type="button">清空</button>
+                    </div>
+                    <p class="hint">提示：支持逗号分隔、带引号字段、空值自动跳过。</p>
+                </div>
+                <div class="preview-card">
+                    <div class="preview-head">
+                        <h3>数据预览</h3>
+                        <span id="rowCount">0 行</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="previewTable">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="analysis" class="panel analysis-panel">
+            <div class="section-title">
+                <p class="eyebrow">Step 2</p>
+                <h2>选择变量并分析</h2>
+                <p>选择 X 与 Y 列，点击分析后生成结果。</p>
+            </div>
+            <div class="control-grid">
+                <label>
+                    自变量 X
+                    <select id="xSelect"></select>
+                </label>
+                <label>
+                    因变量 Y
+                    <select id="ySelect"></select>
+                </label>
+                <button class="button primary" id="analyzeBtn" type="button">运行线性回归</button>
+            </div>
+
+            <div id="message" class="message" role="status"></div>
+
+            <div class="results-grid">
+                <article class="metric-card equation">
+                    <span>回归方程</span>
+                    <strong id="equation">--</strong>
+                </article>
+                <article class="metric-card">
+                    <span>R²</span>
+                    <strong id="rSquared">--</strong>
+                </article>
+                <article class="metric-card">
+                    <span>相关系数 r</span>
+                    <strong id="correlation">--</strong>
+                </article>
+                <article class="metric-card">
+                    <span>RMSE</span>
+                    <strong id="rmse">--</strong>
+                </article>
+                <article class="metric-card">
+                    <span>样本数 n</span>
+                    <strong id="sampleSize">--</strong>
+                </article>
+                <article class="metric-card">
+                    <span>平均绝对误差 MAE</span>
+                    <strong id="mae">--</strong>
+                </article>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-head">
+                    <div>
+                        <h3>散点图与拟合线</h3>
+                        <p id="chartSubtitle">等待数据分析</p>
+                    </div>
+                    <button class="button secondary" id="downloadBtn" type="button">下载图表 SVG</button>
+                </div>
+                <div id="chart" class="chart" aria-label="线性回归图表"></div>
+            </div>
+
+            <div class="detail-card">
+                <h3>诊断说明</h3>
+                <ul id="diagnostics">
+                    <li>请先输入数据并运行分析。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="guide" class="guide">
+            <div class="section-title">
+                <p class="eyebrow">Guide</p>
+                <h2>这个工具适合什么场景？</h2>
+            </div>
+            <div class="guide-grid">
+                <div>
+                    <h3>业务快速验证</h3>
+                    <p>例如广告投入与销售额、客单价与复购率、面积与房价之间的线性关系。</p>
+                </div>
+                <div>
+                    <h3>教学演示</h3>
+                    <p>可直观看到斜率、截距、R²、误差指标如何随数据变化。</p>
+                </div>
+                <div>
+                    <h3>隐私友好</h3>
+                    <p>数据不上传服务器，所有解析和计算都在浏览器里完成。</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <span>Linear Regression Lab</span>
+        <span>纯前端 · GitHub Pages 部署</span>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
